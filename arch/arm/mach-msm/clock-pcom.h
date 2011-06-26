@@ -1,29 +1,28 @@
 /* Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- *       copyright notice, this list of conditions and the following
- *       disclaimer in the documentation and/or other materials provided
- *       with the distribution.
- *     * Neither the name of Code Aurora Forum, Inc. nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of Code Aurora nor
+ *       the names of its contributors may be used to endorse or promote
+ *       products derived from this software without specific prior written
+ *       permission.
  *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
- * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
- * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
 
@@ -72,13 +71,8 @@
 #define P_USB_HS_P_CLK	37  /* High speed USB pbus clock */
 #define P_USB_OTG_CLK	38  /* Full speed USB clock */
 #define P_VDC_CLK	39  /* Video controller clock */
-#if !defined(CONFIG_MSM_LEGACY_7X00A_AMSS)
-#define P_VFE_MDC_CLK	40  /* VFE MDDI client clock */
-#define P_VFE_CLK	41  /* Camera / Video Front End clock */
-#else/* For radio code base others */
-#define P_VFE_MDC_CLK	41  /* VFE MDDI client clock */
-#define P_VFE_CLK	40  /* Camera / Video Front End clock */
-#endif
+#define P_VFE_MDC_CLK	40  /* Camera / Video Front End clock */
+#define P_VFE_CLK	41  /* VFE MDDI client clock */
 #define P_MDP_LCDC_PCLK_CLK	42
 #define P_MDP_LCDC_PAD_PCLK_CLK 43
 #define P_MDP_VSYNC_CLK	44
@@ -94,7 +88,7 @@
 #define P_USB_HS2_CORE_CLK	54  /* High speed USB 2 core clock */
 #define P_USB_HS3_CORE_CLK	55  /* High speed USB 3 core clock */
 #define P_CAM_M_CLK		56
-#define P_QUP_I2C_P_CLK		57
+#define P_CAMIF_PAD_P_CLK	57
 #define P_GRP_2D_CLK		58
 #define P_GRP_2D_P_CLK		59
 #define P_I2S_CLK		60
@@ -125,8 +119,8 @@
 #define P_TSIF_P_CLK		85
 #define P_MDP_P_CLK		86
 #define P_SDAC_M_CLK		87
-#define P_MI2S_S_CLK		88
-#define P_MI2S_M_CLK		89
+#define P_MI2S_HDMI_CLK		88
+#define P_MI2S_HDMI_M_CLK	89
 #define P_AXI_ROTATOR_CLK	90
 #define P_HDMI_CLK		91
 #define P_CSI0_CLK		92
@@ -138,11 +132,13 @@
 #define P_GSBI_CLK		98
 #define P_GSBI_P_CLK		99
 
-#define P_NR_CLKS		100
+#define P_CE_CLK		100 /* Crypto engine */
+#define P_CODEC_SSBI_CLK	101
+#define P_NR_CLKS		102
+
 
 struct clk_ops;
 extern struct clk_ops clk_ops_pcom;
-enum clk_reset_action;
 
 int pc_clk_reset(unsigned id, enum clk_reset_action action);
 

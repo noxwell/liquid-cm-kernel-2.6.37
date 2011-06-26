@@ -197,4 +197,10 @@ config CHARGER_PM8058
 	help
 	  Say Y to include support for the pm8058 charge controller
 
+config ACER_BATTERY
+	depends on POWER_SUPPLY
+	depends on I2C
+	default n
+	tristate "TI gas gauge"
+
 endif # POWER_SUPPLY

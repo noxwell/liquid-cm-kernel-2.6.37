@@ -22,6 +22,7 @@
 #include <linux/gpio.h>
 #include <asm/mach-types.h>
 
+#include "gpio_chip.h"
 #include "board-sapphire.h"
 
 #ifdef DEBUG_SAPPHIRE_GPIO
@@ -64,10 +65,8 @@ static uint8_t sapphire_sleep_int_mask[] = {
 
 static int sapphire_suspended;
 
-static int sapphire_gpio_get(struct gpio_chip *chip, unsigned offset)
+static int sapphire_gpio_read(struct gpio_chip *chip, unsigned n)
 {
-	unsigned n = chip->base + offset;
-
 	if (n < SAPPHIRE_GPIO_INT_B0_BASE)	/*MISCn*/
 		return !!(readb(CPLD_GPIO_REG(n)) & CPLD_GPIO_BIT_POS_MASK(n));
 	else if (n <= SAPPHIRE_GPIO_END)	/*gpio n is INT pin*/
@@ -79,13 +78,12 @@ static int sapphire_gpio_get(struct gpio_chip *chip, unsigned offset)
 /*CPLD Write only register :MISC2, MISC3, MISC4, MISC5 => reg=0,2,4,6
 Reading from write-only registers is undefined, so the writing value
 should be kept in shadow for later usage.*/
-static void sapphire_gpio_set(struct gpio_chip *chip, unsigned offset, int on)
+int sapphire_gpio_write(struct gpio_chip *chip, unsigned n, unsigned on)
 {
-	unsigned n = chip->base + offset;
 	unsigned long flags;
 	uint8_t reg_val;
 	if (n > SAPPHIRE_GPIO_END)
-		return;
+		return -1;
 
 	local_irq_save(flags);
 	reg_val = readb(CPLD_GPIO_REG(n));
@@ -98,35 +96,35 @@ static void sapphire_gpio_set(struct gpio_chip *chip, unsigned offset, int on)
 	DBG("gpio=%d, l=0x%x\r\n", n, readb(SAPPHIRE_CPLD_INT_LEVEL));
 
 	local_irq_restore(flags);
-}
 
-static int sapphire_gpio_direction_output(struct gpio_chip *chip,
-					  unsigned offset, int value)
-{
-	sapphire_gpio_set(chip, offset, value);
 	return 0;
 }
 
-static int sapphire_gpio_direction_input(struct gpio_chip *chip,
-					  unsigned offset)
+static int sapphire_gpio_configure(struct gpio_chip *chip, unsigned int gpio,
+				   unsigned long flags)
 {
+	if (flags & (GPIOF_OUTPUT_LOW | GPIOF_OUTPUT_HIGH))
+		sapphire_gpio_write(chip, gpio, flags & GPIOF_OUTPUT_HIGH);
+
+	DBG("gpio=%d, l=0x%x\r\n", gpio, readb(SAPPHIRE_CPLD_INT_LEVEL));
+
 	return 0;
 }
 
-static int sapphire_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
+static int sapphire_gpio_get_irq_num(struct gpio_chip *chip, unsigned int gpio,
+				unsigned int *irqp, unsigned long *irqnumflagsp)
 {
-	unsigned gpio = chip->base + offset;
-	int irq;
-
 	DBG("gpio=%d, l=0x%x\r\n", gpio, readb(SAPPHIRE_CPLD_INT_LEVEL));
 	DBG("SAPPHIRE_GPIO_INT_B0_BASE=%d, SAPPHIRE_GPIO_LAST_INT=%d\r\n",
 	    SAPPHIRE_GPIO_INT_B0_BASE, SAPPHIRE_GPIO_LAST_INT);
 	if ((gpio < SAPPHIRE_GPIO_INT_B0_BASE) ||
 	     (gpio > SAPPHIRE_GPIO_LAST_INT))
 		return -ENOENT;
-	irq = SAPPHIRE_GPIO_TO_INT(gpio);
-	DBG("irq=%d\r\n", irq);
-	return irq;
+	*irqp = SAPPHIRE_GPIO_TO_INT(gpio);
+	DBG("*irqp=%d\r\n", *irqp);
+	if (irqnumflagsp)
+		*irqnumflagsp = 0;
+	return 0;
 }
 
 /*write 1 to clear INT status bit.*/
@@ -267,14 +265,16 @@ static struct irq_chip sapphire_gpio_irq_chip = {
 	/*.set_type  = sapphire_gpio_irq_set_type,*/
 };
 
+/*Thomas:For CPLD*/
 static struct gpio_chip sapphire_gpio_chip = {
-	.base = SAPPHIRE_GPIO_START,
-	.ngpio = SAPPHIRE_GPIO_END - SAPPHIRE_GPIO_START + 1,
-	.direction_output = sapphire_gpio_direction_output,
-	.direction_input = sapphire_gpio_direction_input,
-	.get = sapphire_gpio_get,
-	.set = sapphire_gpio_set,
-	.to_irq = sapphire_gpio_to_irq,
+	.start = SAPPHIRE_GPIO_START,
+	.end = SAPPHIRE_GPIO_END,
+	.configure = sapphire_gpio_configure,
+	.get_irq_num = sapphire_gpio_get_irq_num,
+	.read = sapphire_gpio_read,
+	.write = sapphire_gpio_write,
+/*	.read_detect_status = sapphire_gpio_read_detect_status,
+	.clear_detect_status = sapphire_gpio_clear_detect_status */
 };
 
 struct sysdev_class sapphire_sysdev_class = {
@@ -287,7 +287,7 @@ static struct sys_device sapphire_irq_device = {
 	.cls    = &sapphire_sysdev_class,
 };
 
-int __init sapphire_init_gpio(void)
+int sapphire_init_gpio(void)
 {
 	int i;
 	if (!machine_is_sapphire())
@@ -301,7 +301,7 @@ int __init sapphire_init_gpio(void)
 		set_irq_flags(i, IRQF_VALID);
 	}
 
-	gpiochip_add(&sapphire_gpio_chip);
+	register_gpio_chip(&sapphire_gpio_chip);
 
 	/*setup CPLD INT connecting to SOC's gpio 17 */
 	set_irq_type(MSM_GPIO_TO_INT(17), IRQF_TRIGGER_HIGH);
@@ -322,3 +322,5 @@ int sapphire_init_cpld(unsigned int sys_rev)
 		writeb(sapphire_cpld_initdata[i], SAPPHIRE_CPLD_BASE + i * 2);
 	return 0;
 }
+
+arch_initcall(sapphire_init_gpio);

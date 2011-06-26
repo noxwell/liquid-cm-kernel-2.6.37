@@ -65,14 +65,12 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
-#include <linux/slab.h>
 #include <linux/android_pmem.h>
 #include <linux/msm_q6venc.h>
-#include "../dal.h"
+#include "dal.h"
 
-#define DALDEVICEID_VENC_DEVICE       0x0200002D
-/*#define DALDEVICEID_VENC_PORTNAME     "DAL_AQ_VID"*/
-#define DALDEVICEID_VENC_PORTNAME     "DSP_DAL_AQ_VID"
+#define DALDEVICEID_VENC_DEVICE         0x0200002D
+#define DALDEVICEID_VENC_PORTNAME       "DAL_AQ_VID"
 
 #define VENC_NAME		        "q6venc"
 #define VENC_MSG_MAX                    128
@@ -82,10 +80,6 @@
 #define MINOR_MASK			0x0000FFFF
 #define VENC_GET_MAJOR_VERSION(version) ((version & MAJOR_MASK)>>16)
 #define VENC_GET_MINOR_VERSION(version) (version & MINOR_MASK)
-
-uint32_t kpi_start[5];
-uint32_t kpi_end;
-static uint32_t cnt = 0;
 
 enum {
 	VENC_BUFFER_TYPE_INPUT,
@@ -149,6 +143,7 @@ struct venc_msg_list {
 };
 struct venc_buf {
 	int fd;
+	u32 src;
 	u32 offset;
 	u32 size;
 	u32 btype;
@@ -161,7 +156,7 @@ struct venc_pmem_list {
 };
 struct venc_dev {
 	bool is_active;
-	bool pmem_freed;
+	bool stop_called;
 	enum venc_state_type state;
 	struct list_head venc_msg_list_head;
 	struct list_head venc_msg_list_free;
@@ -303,6 +298,7 @@ static struct venc_pmem_list *venc_add_pmem_to_list(struct venc_dev *dvenc,
 	plist->buf.size = mptr->size;
 	plist->buf.btype = btype;
 	plist->buf.offset = mptr->offset;
+	plist->buf.src = mptr->src;
 
 	spin_lock_irqsave(&dvenc->venc_pmem_list_lock, flags);
 	list_add(&plist->list, &dvenc->venc_pmem_list_head);
@@ -515,7 +511,7 @@ static int venc_encode_frame(struct venc_dev *dvenc, void *argp)
 	q6_input.flags = 0;
 	if (input.flags & VENC_FLAG_EOS)
 		q6_input.flags |= 0x00000001;
-	q6_input.yuv_buf.region = 0;
+	q6_input.yuv_buf.region = plist->buf.src;
 	q6_input.yuv_buf.phys = plist->buf.paddr;
 	q6_input.yuv_buf.size = plist->buf.size;
 	q6_input.yuv_buf.offset = 0;
@@ -524,11 +520,6 @@ static int venc_encode_frame(struct venc_dev *dvenc, void *argp)
 	q6_input.time_stamp = input.time_stamp;
 	q6_input.dvs_offsetx = 0;
 	q6_input.dvs_offsety = 0;
-
-
-kpi_start[cnt] = ktime_to_ns(ktime_get());
-TRACE("kpi_start %d, %u \n", cnt, kpi_start[cnt]);
-cnt++;
 
 	TRACE("Pushing down input phys=0x%x fd= %d, client_data: 0x%x,"
 		" time_stamp:%lld \n", q6_input.yuv_buf.phys, plist->buf.fd,
@@ -573,7 +564,7 @@ static int venc_fill_output(struct venc_dev *dvenc, void *argp)
 			return -EPERM;
 		}
 	}
-	q6_output.bit_stream_buf.region = 0;
+	q6_output.bit_stream_buf.region = plist->buf.src;
 	q6_output.bit_stream_buf.phys = (u32)plist->buf.paddr;
 	q6_output.bit_stream_buf.size = plist->buf.size;
 	q6_output.bit_stream_buf.offset = 0;
@@ -591,6 +582,7 @@ static int venc_stop(struct venc_dev *dvenc)
 	int ret = 0;
 	struct venc_msg msg;
 
+	dvenc->stop_called = 1;
 	ret = dal_call_f0(dvenc->q6_handle, VENC_DALRPC_STOP, 1);
 	if (ret) {
 		pr_err("%s: remote runction failed (%d)\n", __func__, ret);
@@ -820,17 +812,10 @@ static int venc_q6_stop(struct venc_dev *dvenc)
 {
 	int ret = 0;
 	struct venc_pmem_list *plist;
-	unsigned long flags;
 
 	wake_up(&dvenc->venc_msg_evt);
-	spin_lock_irqsave(&dvenc->venc_pmem_list_lock, flags);
-	if (!dvenc->pmem_freed) {
-		list_for_each_entry(plist, &dvenc->venc_pmem_list_head, list)
-			put_pmem_file(plist->buf.file);
-		dvenc->pmem_freed = 1;
-	}
-	spin_unlock_irqrestore(&dvenc->venc_pmem_list_lock, flags);
-
+	list_for_each_entry(plist, &dvenc->venc_pmem_list_head, list)
+		put_pmem_file(plist->buf.file);
 	dvenc->state = VENC_STATE_STOP;
 	return ret;
 }
@@ -883,7 +868,7 @@ static void venc_q6_callback(void *data, int len, void *cookie)
 	unsigned long msg_code;
 	struct venc_input_payload *pload1;
 	struct venc_output_payload *pload2;
-	uint32_t *tmp = (uint32_t *) data;
+	uint32_t * tmp = (uint32_t *) data;
 
 	if (dvenc == NULL) {
 		pr_err("%s: empty driver parameter\n", __func__);
@@ -928,15 +913,6 @@ static void venc_q6_callback(void *data, int len, void *cookie)
 		msg.msg_data_size = sizeof(union venc_msg_data);
 		break;
 	case VENC_EVENT_RELEASE_INPUT:
-
-kpi_end = ktime_to_ns(ktime_get());
-TRACE("KPI : encode a frame, %u ms\n", (kpi_end - kpi_start[0])/(1000*1000));
-if (cnt > 0) {
-	int i = 0;
-	for (i = 0; i < cnt; i++)
-	kpi_start[i] = kpi_start[i+1];
-}
-cnt--;
 		pload1 = &((q6_msg->payload).input_payload);
 		TRACE("Release_input: data: 0x%x \n", pload1->data);
 		if (pload1 != NULL) {
@@ -1102,7 +1078,7 @@ static int q6venc_open(struct inode *inode, struct file *file)
 		list_add(&plist->list, &dvenc->venc_msg_list_free);
 	}
 	dvenc->q6_handle =
-	    dal_attach(DALDEVICEID_VENC_DEVICE, DALDEVICEID_VENC_PORTNAME,
+	    dal_attach(DALDEVICEID_VENC_DEVICE, DALDEVICEID_VENC_PORTNAME, 1,
 		       venc_q6_callback, (void *)dvenc);
 	if (!(dvenc->q6_handle)) {
 		pr_err("%s: daldevice_attach failed (%d)\n", __func__, ret);
@@ -1114,15 +1090,10 @@ static int q6venc_open(struct inode *inode, struct file *file)
 		pr_err("%s: failed to get version\n", __func__);
 		goto err_venc_dal_open;
 	}
-
-	pr_info("VENC_INTERFACE_VERSION %X, version_info.version %X\n",
-		VENC_INTERFACE_VERSION, version_info.version);
-#if 0
 	if (venc_check_version(VENC_INTERFACE_VERSION, version_info.version)) {
 		pr_err("%s: driver version mismatch\n", __func__);
 		goto err_venc_dal_open;
 	}
-#endif
 	ret = dal_call_f0(dvenc->q6_handle, DAL_OP_OPEN, 1);
 	if (ret) {
 		pr_err("%s: dal_call_open failed (%d)\n", __func__, ret);
@@ -1151,13 +1122,13 @@ static int q6venc_release(struct inode *inode, struct file *file)
 	struct venc_msg_list *l, *n;
 	struct venc_pmem_list *plist, *m;
 	struct venc_dev *dvenc;
-	unsigned long flags;
 
 	venc_ref--;
 	dvenc = file->private_data;
 	dvenc->is_active = 0;
 	wake_up_all(&dvenc->venc_msg_evt);
-	dal_call_f0(dvenc->q6_handle, VENC_DALRPC_STOP, 1);
+	if (!dvenc->stop_called)
+		dal_call_f0(dvenc->q6_handle, VENC_DALRPC_STOP, 1);
 	dal_call_f0(dvenc->q6_handle, DAL_OP_CLOSE, 1);
 	dal_detach(dvenc->q6_handle);
 	list_for_each_entry_safe(l, n, &dvenc->venc_msg_list_free, list) {
@@ -1168,13 +1139,11 @@ static int q6venc_release(struct inode *inode, struct file *file)
 		list_del(&l->list);
 		kfree(l);
 	}
-	spin_lock_irqsave(&dvenc->venc_pmem_list_lock, flags);
-	if (!dvenc->pmem_freed) {
+	if (!dvenc->stop_called) {
 		list_for_each_entry(plist, &dvenc->venc_pmem_list_head, list)
 			put_pmem_file(plist->buf.file);
-		dvenc->pmem_freed = 1;
+		dvenc->stop_called = 1;
 	}
-	spin_unlock_irqrestore(&dvenc->venc_pmem_list_lock, flags);
 
 	list_for_each_entry_safe(plist, m, &dvenc->venc_pmem_list_head, list) {
 		list_del(&plist->list);

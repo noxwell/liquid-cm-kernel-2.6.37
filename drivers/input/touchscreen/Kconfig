@@ -735,4 +735,9 @@ config TOUCHSCREEN_STMPE
 	  To compile this driver as a module, choose M here: the
 	  module will be called stmpe-ts.
 
+config TOUCHSCREEN_AUO_H353
+	default n
+	tristate "AUO touchscreen"
+	depends on I2C
+
 endif

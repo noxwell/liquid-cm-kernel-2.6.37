@@ -1,7 +1,7 @@
 /** arch/arm/mach-msm/smd_rpcrouter.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2008 QUALCOMM Incorporated.
+ * Copyright (c) 2007-2010, Code Aurora Forum. All rights reserved.
  * Author: San Mehat <san@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -22,6 +22,7 @@
 #include <linux/list.h>
 #include <linux/cdev.h>
 #include <linux/platform_device.h>
+#include <linux/msm_rpcrouter.h>
 #include <linux/wakelock.h>
 
 #include <mach/msm_smd.h>
@@ -32,7 +33,7 @@
 #define RPCROUTER_VERSION			1
 #define RPCROUTER_PROCESSORS_MAX		4
 #define RPCROUTER_MSGSIZE_MAX			512
-#define RPCROUTER_DATASIZE_MAX			500
+#define RPCROUTER_PEND_REPLIES_MAX		32
 
 #define RPCROUTER_CLIENT_BCAST_ID		0xffffffff
 #define RPCROUTER_ROUTER_ADDRESS		0xfffffffe
@@ -48,8 +49,13 @@
 #define RPCROUTER_CTRL_CMD_REMOVE_CLIENT	6
 #define RPCROUTER_CTRL_CMD_RESUME_TX		7
 #define RPCROUTER_CTRL_CMD_EXIT			8
+#define RPCROUTER_CTRL_CMD_PING			9
 
 #define RPCROUTER_DEFAULT_RX_QUOTA	5
+
+#define RPCROUTER_XPRT_EVENT_DATA  1
+#define RPCROUTER_XPRT_EVENT_OPEN  2
+#define RPCROUTER_XPRT_EVENT_CLOSE 3
 
 union rr_control_msg {
 	uint32_t cmd;
@@ -130,26 +136,28 @@ struct rr_remote_endpoint {
 	uint32_t cid;
 
 	int tx_quota_cntr;
+	int quota_restart_state;
 	spinlock_t quota_lock;
 	wait_queue_head_t quota_wait;
 
 	struct list_head list;
 };
 
-struct msm_reply_route {
-	uint32_t xid;
+struct msm_rpc_reply {
+	struct list_head list;
 	uint32_t pid;
 	uint32_t cid;
-	uint32_t unused;
+	uint32_t prog; /* be32 */
+	uint32_t vers; /* be32 */
+	uint32_t xid; /* be32 */
 };
-
-#define MAX_REPLY_ROUTE 4
 
 struct msm_rpc_endpoint {
 	struct list_head list;
 
 	/* incomplete packets waiting for assembly */
 	struct list_head incomplete;
+	spinlock_t incomplete_lock;
 
 	/* complete packets waiting to be read */
 	struct list_head read_q;
@@ -157,6 +165,11 @@ struct msm_rpc_endpoint {
 	struct wake_lock read_q_wake_lock;
 	wait_queue_head_t wait_q;
 	unsigned flags;
+
+	/* restart handling */
+	int restart_state;
+	spinlock_t restart_lock;
+	wait_queue_head_t restart_wait;
 
 	/* endpoint address */
 	uint32_t pid;
@@ -171,23 +184,35 @@ struct msm_rpc_endpoint {
 	uint32_t dst_prog; /* be32 */
 	uint32_t dst_vers; /* be32 */
 
-	/* RPC_REPLY writes must be routed to the pid/cid of the
-	 * RPC_CALL they are in reply to.  Keep a cache of valid
-	 * xid/pid/cid groups.  pid 0xffffffff -> not valid.
-	 */
-	unsigned next_rroute;
-	struct msm_reply_route rroute[MAX_REPLY_ROUTE];
+	/* reply queue for inbound messages */
+	struct list_head reply_pend_q;
+	struct list_head reply_avail_q;
+	spinlock_t reply_q_lock;
+	uint32_t reply_cnt;
+	struct wake_lock reply_q_wake_lock;
 
 	/* device node if this endpoint is accessed via userspace */
 	dev_t dev;
 };
 
-/* shared between smd_rpcrouter*.c */
+struct rpcrouter_xprt {
+	char *name;
+	void *priv;
 
+	int (*read_avail)(void);
+	int (*read)(void *data, uint32_t len);
+	int (*write_avail)(void);
+	int (*write)(void *data, uint32_t len);
+	int (*close)(void);
+};
+
+/* shared between smd_rpcrouter*.c */
+void msm_rpcrouter_xprt_notify(struct rpcrouter_xprt *xprt, unsigned event);
 int __msm_rpc_read(struct msm_rpc_endpoint *ept,
 		   struct rr_fragment **frag,
 		   unsigned len, long timeout);
 
+int msm_rpcrouter_close(void);
 struct msm_rpc_endpoint *msm_rpcrouter_create_local_endpoint(dev_t dev);
 int msm_rpcrouter_destroy_local_endpoint(struct msm_rpc_endpoint *ept);
 
@@ -197,6 +222,16 @@ int msm_rpcrouter_create_server_pdev(struct rr_server *server);
 int msm_rpcrouter_init_devices(void);
 void msm_rpcrouter_exit_devices(void);
 
+void get_requesting_client(struct msm_rpc_endpoint *ept, uint32_t xid,
+			   struct msm_rpc_client_info *clnt_info);
+
 extern dev_t msm_rpcrouter_devno;
 extern struct class *msm_rpcrouter_class;
+
+void xdr_init(struct msm_rpc_xdr *xdr);
+void xdr_init_input(struct msm_rpc_xdr *xdr, void *buf, uint32_t size);
+void xdr_init_output(struct msm_rpc_xdr *xdr, void *buf, uint32_t size);
+void xdr_clean_input(struct msm_rpc_xdr *xdr);
+void xdr_clean_output(struct msm_rpc_xdr *xdr);
+uint32_t xdr_read_avail(struct msm_rpc_xdr *xdr);
 #endif

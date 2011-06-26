@@ -28,13 +28,28 @@
 #include <mach/vreg.h>
 #include <mach/htc_pwrsink.h>
 
-#include <mach/mmc.h>
+#include <asm/mach/mmc.h>
 
 #include "devices.h"
+#include "gpio_chip.h"
 #include "board-sapphire.h"
 #include "proc_comm.h"
 
-#define DEBUG_SDSLOT_VDD 0
+#define DEBUG_SDSLOT_VDD 1
+
+extern int msm_add_sdcc(unsigned int controller,
+			struct mmc_platform_data *plat);
+
+/* ---- COMMON ---- */
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for (n = 0; n < len; n++) {
+		id = table[n];
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+	}
+}
 
 /* ---- SDCARD ---- */
 
@@ -159,8 +174,9 @@ static unsigned int sapphire_sdslot_status(struct device *dev)
 			| MMC_VDD_25_26 | MMC_VDD_26_27 | MMC_VDD_27_28 \
 			| MMC_VDD_28_29 | MMC_VDD_29_30)
 
-static struct msm_mmc_platform_data sapphire_sdslot_data = {
+static struct mmc_platform_data sapphire_sdslot_data = {
 	.ocr_mask	= SAPPHIRE_MMC_VDD,
+	.status_irq	= SAPPHIRE_GPIO_TO_INT(SAPPHIRE_GPIO_SDMC_CD_N),
 	.status		= sapphire_sdslot_status,
 	.translate_vdd	= sapphire_sdslot_switchvdd,
 };
@@ -246,8 +262,8 @@ int sapphire_wifi_set_carddetect(int val)
 EXPORT_SYMBOL(sapphire_wifi_set_carddetect);
 #endif
 
-int sapphire_wifi_power_state=0;
-int sapphire_bt_power_state=0;
+static int sapphire_wifi_power_state;
+static int sapphire_bt_power_state;
 
 int sapphire_wifi_power(int on)
 {
@@ -271,15 +287,8 @@ int sapphire_wifi_power(int on)
 	mdelay(100);
 	gpio_set_value(SAPPHIRE_GPIO_WIFI_EN, on);
 	mdelay(100);
-	if (!on) {
-		if(!sapphire_bt_power_state)
-		{
+	if (!on)
 		vreg_disable(vreg_wifi_osc);
-			printk("WiFi disable vreg_wifi_osc.\n");
-		}
-		else
-			printk("WiFi shouldn't disable vreg_wifi_osc. BT is using it!!\n");
-	}
 	sapphire_wifi_power_state = on;
 	return 0;
 }
@@ -327,7 +336,7 @@ void sapphire_wifi_reset(int on)
 EXPORT_SYMBOL(sapphire_wifi_reset);
 #endif
 
-static struct msm_mmc_platform_data sapphire_wifi_data = {
+static struct mmc_platform_data sapphire_wifi_data = {
 	.ocr_mask		= MMC_VDD_28_29,
 	.status			= sapphire_wifi_status,
 	.register_status_notify	= sapphire_wifi_status_register,
@@ -349,11 +358,10 @@ int __init sapphire_init_mmc(unsigned int sys_rev)
 
 	set_irq_wake(SAPPHIRE_GPIO_TO_INT(SAPPHIRE_GPIO_SDMC_CD_N), 1);
 
-	msm_add_sdcc(1, &sapphire_wifi_data, 0, 0);
+	msm_add_sdcc(1, &sapphire_wifi_data);
 
 	if (!opt_disable_sdcard)
-		msm_add_sdcc(2, &sapphire_sdslot_data,
-			     SAPPHIRE_GPIO_TO_INT(SAPPHIRE_GPIO_SDMC_CD_N), 0);
+		msm_add_sdcc(2, &sapphire_sdslot_data);
 	else
 		printk(KERN_INFO "sapphire: SD-Card interface disabled\n");
 	return 0;

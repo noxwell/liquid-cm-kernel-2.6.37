@@ -178,4 +178,7 @@ source "drivers/staging/intel_sst/Kconfig"
 source "drivers/staging/speakup/Kconfig"
 
 endif # !STAGING_EXCLUDE_BUILD
+
+source "drivers/staging/ramzswap/Kconfig"
+
 endif # STAGING

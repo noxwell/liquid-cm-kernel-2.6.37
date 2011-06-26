@@ -1,5 +1,4 @@
-/* arch/arm/mach-msm/qdsp6/audio_ctrl.c
- *
+/*
  * Copyright (C) 2009 Google, Inc.
  * Copyright (C) 2009 HTC Corporation
  *
@@ -25,15 +24,12 @@
 #define BUFSZ (0)
 
 static DEFINE_MUTEX(voice_lock);
-static DEFINE_MUTEX(fm_lock);
 static int voice_started;
-static int fm_started;
 
 static struct audio_client *voc_tx_clnt;
 static struct audio_client *voc_rx_clnt;
-static struct audio_client *fm_clnt;
 
-static int q6_voice_start(uint32_t rx_acdb_id, uint32_t tx_acdb_id)
+static int q6_voice_start(void)
 {
 	int rc = 0;
 
@@ -45,17 +41,17 @@ static int q6_voice_start(uint32_t rx_acdb_id, uint32_t tx_acdb_id)
 		goto done;
 	}
 
-	voc_rx_clnt = q6voice_open(AUDIO_FLAG_WRITE, rx_acdb_id);
-	if (!voc_rx_clnt) {
-		pr_err("voice: open voice rx failed.\n");
+	voc_tx_clnt = q6voice_open(AUDIO_FLAG_WRITE);
+	if (!voc_tx_clnt) {
+		pr_err("voice: open voice tx failed.\n");
 		rc = -ENOMEM;
 		goto done;
 	}
 
-	voc_tx_clnt = q6voice_open(AUDIO_FLAG_READ, tx_acdb_id);
-	if (!voc_tx_clnt) {
-		pr_err("voice: open voice tx failed.\n");
-		q6voice_close(voc_rx_clnt);
+	voc_rx_clnt = q6voice_open(AUDIO_FLAG_READ);
+	if (!voc_rx_clnt) {
+		pr_err("voice: open voice rx failed.\n");
+		q6voice_close(voc_tx_clnt);
 		rc = -ENOMEM;
 	}
 
@@ -77,116 +73,51 @@ static int q6_voice_stop(void)
 	return 0;
 }
 
-int q6_fm_start(void)
-{
-	int rc = 0;
-
-	mutex_lock(&fm_lock);
-
-	if (fm_started) {
-		pr_err("fm: busy\n");
-		rc = -EBUSY;
-		goto done;
-	}
-
-	fm_clnt = q6fm_open();
-	if (!fm_clnt) {
-		pr_err("fm: open failed.\n");
-		rc = -ENOMEM;
-		goto done;
-	}
-
-	fm_started = 1;
-done:
-	mutex_unlock(&fm_lock);
-	return rc;
-}
-
-int q6_fm_stop(void)
-{
-	mutex_lock(&fm_lock);
-	if (fm_started) {
-		q6fm_close(fm_clnt);
-		fm_started = 0;
-	}
-	mutex_unlock(&fm_lock);
-	return 0;
-}
-
 static int q6_open(struct inode *inode, struct file *file)
 {
 	return 0;
 }
 
-static long q6_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int q6_ioctl(struct inode *inode, struct file *file,
+		    unsigned int cmd, unsigned long arg)
 {
 	int rc;
 	uint32_t n;
 	uint32_t id[2];
-	char filename[64];
 
 	switch (cmd) {
 	case AUDIO_SWITCH_DEVICE:
 		rc = copy_from_user(&id, (void *)arg, sizeof(id));
-		if (rc) {
-			pr_err("%s: bad user address\n", __func__);
-			rc = -EFAULT;
-		} else
+		if (!rc) {
 			rc = q6audio_do_routing(id[0], id[1]);
+			pr_info("[Audio_CTL] id[0] = 0x%x, id[1] = 0x%x\n",id[0], id[1]);
+		}
 		break;
 	case AUDIO_SET_VOLUME:
 		rc = copy_from_user(&n, (void *)arg, sizeof(n));
-		if (rc) {
-			pr_err("%s: bad user address\n", __func__);
-			rc = -EFAULT;
-		} else
+		if (!rc)
 			rc = q6audio_set_rx_volume(n);
 		break;
 	case AUDIO_SET_MUTE:
 		rc = copy_from_user(&n, (void *)arg, sizeof(n));
-		if (rc) {
-			pr_err("%s: bad user address\n", __func__);
-			rc = -EFAULT;
-		} else
+		if (!rc)
 			rc = q6audio_set_tx_mute(n);
 		break;
 	case AUDIO_UPDATE_ACDB:
 		rc = copy_from_user(&id, (void *)arg, sizeof(id));
-		if (rc) {
-			pr_err("%s: bad user address\n", __func__);
-			rc = -EFAULT;
-		} else
-			rc = q6audio_update_acdb(id[0], id[1]);
+		if (!rc)
+			rc = q6audio_update_acdb(id[0], 0);
 		break;
 	case AUDIO_START_VOICE:
-		if (arg == 0)
-			id[0] = id[1] = 0;
-		else if (copy_from_user(&id, (void *)arg, sizeof(id))) {
-			pr_info("voice: copy acdb_id from user failed\n");
-			rc = -EFAULT;
-			break;
-		}
-		rc = q6_voice_start(id[0], id[1]);
+		rc = q6_voice_start();
 		break;
 	case AUDIO_STOP_VOICE:
 		rc = q6_voice_stop();
 		break;
-	case AUDIO_START_FM:
-		rc = q6_fm_start();
-		break;
-	case AUDIO_STOP_FM:
-		rc = q6_fm_stop();
-		break;
 	case AUDIO_REINIT_ACDB:
-		rc = copy_from_user(&filename, (void *)arg, sizeof(filename));
-		if (rc) {
-			pr_err("%s: bad user address\n", __func__);
-			rc = -EFAULT;
-		} else
-			rc = q6audio_reinit_acdb(filename);
+		rc = 0;
 		break;
 	default:
-		pr_info("%s: unknown %d\n", __func__, cmd);
 		rc = -EINVAL;
 	}
 
@@ -202,7 +133,7 @@ static int q6_release(struct inode *inode, struct file *file)
 static struct file_operations q6_dev_fops = {
 	.owner		= THIS_MODULE,
 	.open		= q6_open,
-	.unlocked_ioctl		= q6_ioctl,
+	.ioctl		= q6_ioctl,
 	.release	= q6_release,
 };
 

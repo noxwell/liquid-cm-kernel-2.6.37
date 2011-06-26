@@ -41,3 +41,10 @@ config MMC_USE_ONLY_HOST_DEFINED_FREQUENCY
         and host defined frequency
         
         If you say Y here, it only use the host defined frequency
+
+config MMC_WIFI
+	tristate "Enable Wifi relation MMC function"
+	depends on MMC && MMC_MSM_SDC2_SUPPORT
+	help
+	  If you say Y here, the Wifi Clock will be set indicate value.
+	  It will not be set to card max value.

@@ -24,6 +24,14 @@
 
 #include "proc_comm.h"
 
+#if defined(CONFIG_MSM_VREG_SWITCH_INVERTED)
+#define VREG_SWITCH_ENABLE 0
+#define VREG_SWITCH_DISABLE 1
+#else
+#define VREG_SWITCH_ENABLE 1
+#define VREG_SWITCH_DISABLE 0
+#endif
+
 struct vreg {
 	const char *name;
 	unsigned id;
@@ -94,6 +102,7 @@ struct vreg *vreg_get(struct device *dev, const char *id)
 	}
 	return ERR_PTR(-ENOENT);
 }
+EXPORT_SYMBOL(vreg_get);
 
 void vreg_put(struct vreg *vreg)
 {
@@ -102,7 +111,7 @@ void vreg_put(struct vreg *vreg)
 int vreg_enable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
-	unsigned enable = 1;
+	int enable = VREG_SWITCH_ENABLE;
 
 	if (vreg->refcnt == 0)
 		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
@@ -112,23 +121,25 @@ int vreg_enable(struct vreg *vreg)
 
 	return vreg->status;
 }
+EXPORT_SYMBOL(vreg_enable);
 
 int vreg_disable(struct vreg *vreg)
 {
 	unsigned id = vreg->id;
-	unsigned enable = 0;
+	int disable = VREG_SWITCH_DISABLE;
 
 	if (!vreg->refcnt)
 		return 0;
 
 	if (vreg->refcnt == 1)
-		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &enable);
+		vreg->status = msm_proc_comm(PCOM_VREG_SWITCH, &id, &disable);
 
 	if (!vreg->status)
 		vreg->refcnt--;
 
 	return vreg->status;
 }
+EXPORT_SYMBOL(vreg_disable);
 
 int vreg_set_level(struct vreg *vreg, unsigned mv)
 {
@@ -137,6 +148,7 @@ int vreg_set_level(struct vreg *vreg, unsigned mv)
 	vreg->status = msm_proc_comm(PCOM_VREG_SET_LEVEL, &id, &mv);
 	return vreg->status;
 }
+EXPORT_SYMBOL(vreg_set_level);
 
 #if defined(CONFIG_DEBUG_FS)
 

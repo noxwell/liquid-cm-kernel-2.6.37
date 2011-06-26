@@ -19,7 +19,6 @@
 #include <linux/miscdevice.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
-#include <linux/slab.h>
 #include <linux/wait.h>
 #include <linux/uaccess.h>
 
@@ -56,12 +55,6 @@ static long pcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case AUDIO_SET_VOLUME: {
 		int vol;
-		if (!pcm->ac) {
-			pr_err("%s: cannot set volume before AUDIO_START!\n",
-				__func__);
-			rc = -EINVAL;
-			break;
-		}
 		if (copy_from_user(&vol, (void*) arg, sizeof(vol))) {
 			rc = -EFAULT;
 			break;
@@ -81,9 +74,10 @@ static long pcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (pcm->ac) {
 			rc = -EBUSY;
 		} else {
-			pcm->ac = q6audio_open_pcm(pcm->buffer_size, pcm->sample_rate,
-						   pcm->channel_count,
-						   AUDIO_FLAG_WRITE, acdb_id);
+			pcm->ac = q6audio_open_pcm(pcm->buffer_size,
+						pcm->sample_rate,
+						pcm->channel_count,
+						AUDIO_FLAG_WRITE, acdb_id);
 			if (!pcm->ac)
 				rc = -ENOMEM;
 		}
@@ -134,10 +128,20 @@ static long pcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
+	case AUDIO_SET_EQ: {
+		struct msm_audio_eq_stream_config eq_config;
+		if (copy_from_user(&eq_config, (void *) arg,
+						sizeof(eq_config))) {
+			rc = -EFAULT;
+			break;
+		}
+		rc = q6audio_set_stream_eq_pcm(pcm->ac, (void *) &eq_config);
+		break;
+	}
 	default:
 		rc = -EINVAL;
 	}
-		mutex_unlock(&pcm->lock);
+	mutex_unlock(&pcm->lock);
 	return rc;
 }
 
@@ -155,7 +159,6 @@ static int pcm_open(struct inode *inode, struct file *file)
 	pcm->channel_count = 2;
 	pcm->sample_rate = 44100;
 	pcm->buffer_size = BUFSZ;
-
 	file->private_data = pcm;
 	return 0;
 }
@@ -183,7 +186,7 @@ static ssize_t pcm_write(struct file *file, const char __user *buf,
 			if (!wait_event_timeout(ac->wait, (ab->used == 0), 5*HZ)) {
 				audio_client_dump(ac);
 				pr_err("pcm_write: timeout. dsp dead?\n");
-				q6audio_dsp_not_responding();
+				BUG();
 			}
 
 		xfer = count;
@@ -196,7 +199,8 @@ static ssize_t pcm_write(struct file *file, const char __user *buf,
 		buf += xfer;
 		count -= xfer;
 
-		ab->used = xfer;
+		ab->used = 1;
+		ab->actual_size = xfer;
 		q6audio_write(ac, ab);
 		ac->cpu_buf ^= 1;
 	}
@@ -210,7 +214,6 @@ static int pcm_release(struct inode *inode, struct file *file)
 	if (pcm->ac)
 		q6audio_close(pcm->ac);
 	kfree(pcm);
-	pr_info("pcm_out: release\n");
 	return 0;
 }
 

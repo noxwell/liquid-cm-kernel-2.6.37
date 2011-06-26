@@ -1,8 +1,7 @@
 /* linux/include/asm-arm/arch-msm/dma.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008 QUALCOMM Incorporated.
- * Copyright (c) 2008 QUALCOMM USA, INC.
+ * Copyright (c) 2008-2009, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -30,25 +29,18 @@ struct msm_dmov_cmd {
 	void (*complete_func)(struct msm_dmov_cmd *cmd,
 			      unsigned int result,
 			      struct msm_dmov_errdata *err);
-	void (*execute_func)(struct msm_dmov_cmd *cmd);
-	void *data;
+	void (*exec_func)(struct msm_dmov_cmd *cmd);
+	void *user;	/* Pointer for caller's reference */
 };
 
-#ifndef CONFIG_ARCH_MSM8X60
 void msm_dmov_enqueue_cmd(unsigned id, struct msm_dmov_cmd *cmd);
 void msm_dmov_enqueue_cmd_ext(unsigned id, struct msm_dmov_cmd *cmd);
 void msm_dmov_stop_cmd(unsigned id, struct msm_dmov_cmd *cmd, int graceful);
 void msm_dmov_flush(unsigned int id);
 int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
-#else
-static inline
-void msm_dmov_enqueue_cmd(unsigned id, struct msm_dmov_cmd *cmd) { }
-static inline
-void msm_dmov_stop_cmd(unsigned id, struct msm_dmov_cmd *cmd, int graceful) { }
-static inline
-int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr) { return -EIO; }
+#if defined(CONFIG_MACH_ACER_A1)
+int msm_dmov_exec_cmd_polling(unsigned id, unsigned int cmdptr);
 #endif
-
 
 #define DMOV_SD0(off, ch) (MSM_DMOV_BASE + 0x0000 + (off) + ((ch) << 2))
 #define DMOV_SD1(off, ch) (MSM_DMOV_BASE + 0x0400 + (off) + ((ch) << 2))
@@ -88,15 +80,22 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr) { return -EIO; }
 #define DMOV_STATUS_CMD_COUNT(n)     (((n) >> 27) & 3)
 #define DMOV_STATUS_RSLT_VALID       (1 << 1)
 #define DMOV_STATUS_CMD_PTR_RDY      (1 << 0)
-
 #define DMOV_ISR              DMOV_SD_AARM(0x380, 0)
-  
+
 #define DMOV_CONFIG(ch)       DMOV_SD_AARM(0x300, ch)
 #define DMOV_CONFIG_FORCE_TOP_PTR_RSLT (1 << 2)
 #define DMOV_CONFIG_FORCE_FLUSH_RSLT   (1 << 1)
 #define DMOV_CONFIG_IRQ_EN             (1 << 0)
 
 /* channel assignments */
+
+#define DMOV_GP_CHAN	      4
+
+#define DMOV_CE_IN_CHAN       5
+#define DMOV_CE_IN_CRCI       1
+
+#define DMOV_CE_OUT_CHAN      6
+#define DMOV_CE_OUT_CRCI      2
 
 #define DMOV_NAND_CHAN        7
 #define DMOV_NAND_CRCI_CMD    5

@@ -17,7 +17,7 @@
 #include <mach/vreg.h>
 #include <mach/htc_pwrsink.h>
 
-#include <mach/mmc.h>
+#include <asm/mach/mmc.h>
 
 #include "devices.h"
 
@@ -26,6 +26,19 @@
 #include "proc_comm.h"
 
 #define DEBUG_SDSLOT_VDD 1
+
+extern int msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat);
+
+/* ---- COMMON ---- */
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n;
+	unsigned id;
+	for(n = 0; n < len; n++) {
+		id = table[n];
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+	}
+}
 
 /* ---- SDCARD ---- */
 
@@ -150,8 +163,9 @@ static unsigned int trout_sdslot_status(struct device *dev)
 			| MMC_VDD_25_26 | MMC_VDD_26_27 | MMC_VDD_27_28 \
 			| MMC_VDD_28_29 | MMC_VDD_29_30
 
-static struct msm_mmc_platform_data trout_sdslot_data = {
+static struct mmc_platform_data trout_sdslot_data = {
 	.ocr_mask	= TROUT_MMC_VDD,
+	.status_irq	= TROUT_GPIO_TO_INT(TROUT_GPIO_SDMC_CD_N),
 	.status		= trout_sdslot_status,
 	.translate_vdd	= trout_sdslot_switchvdd,
 };
@@ -283,7 +297,7 @@ int trout_wifi_reset(int on)
 EXPORT_SYMBOL(trout_wifi_reset);
 #endif
 
-static struct msm_mmc_platform_data trout_wifi_data = {
+static struct mmc_platform_data trout_wifi_data = {
 	.ocr_mask		= MMC_VDD_28_29,
 	.status			= trout_wifi_status,
 	.register_status_notify	= trout_wifi_status_register,
@@ -299,18 +313,16 @@ int __init trout_init_mmc(unsigned int sys_rev)
 	vreg_sdslot = vreg_get(0, "gp6");
 	if (IS_ERR(vreg_sdslot))
 		return PTR_ERR(vreg_sdslot);
-
 	vreg_wifi_osc = vreg_get(0, "mmc");
 	if (IS_ERR(vreg_wifi_osc))
 		return PTR_ERR(vreg_wifi_osc);
 
 	set_irq_wake(TROUT_GPIO_TO_INT(TROUT_GPIO_SDMC_CD_N), 1);
 
-	msm_add_sdcc(1, &trout_wifi_data, 0, 0);
+	msm_add_sdcc(1, &trout_wifi_data);
 
 	if (!opt_disable_sdcard)
-		msm_add_sdcc(2, &trout_sdslot_data,
-			     TROUT_GPIO_TO_INT(TROUT_GPIO_SDMC_CD_N), 0);
+		msm_add_sdcc(2, &trout_sdslot_data);
 	else
 		printk(KERN_INFO "trout: SD-Card interface disabled\n");
 	return 0;

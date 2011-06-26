@@ -29,10 +29,10 @@
 #ifndef _MACH_MSM_QDSP6_ADIE_
 #define _MACH_MSM_QDSP6_ADIE_
 
-#include "../dal.h"
+#include "dal.h"
 
 #define ADIE_DAL_DEVICE		0x02000029
-#define ADIE_DAL_PORT		"SMD_DAL_AM_AUD"
+#define ADIE_DAL_PORT		"DAL_AM_AUD"
 
 enum {
 	ADIE_OP_GET_NUM_PATHS = DAL_OP_FIRST_DEVICE_API,
@@ -59,6 +59,12 @@ enum {
 /* Path IDs used for TTY */
 #define ADIE_PATH_TTY_HEADSET_TX		0x010740fe
 #define ADIE_PATH_TTY_HEADSET_RX		0x010740ff
+
+/* Path IDs used for HAC */
+#ifdef CONFIG_MACH_ACER_A1
+#define ADIE_PATH_HAC_HANDSET_TX		0x010740f6
+#define ADIE_PATH_HAC_HANDSET_RX		0x010740f7
+#endif
 
 /* Path IDs used by Factory Test Mode. */
 #define ADIE_PATH_FTM_MIC1_TX			0x01074108
