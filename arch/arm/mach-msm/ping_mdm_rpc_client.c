@@ -65,6 +65,7 @@
 #include <linux/sched.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
 #include <mach/msm_rpcrouter.h>
 
 #define PING_TEST_BASE 0x31

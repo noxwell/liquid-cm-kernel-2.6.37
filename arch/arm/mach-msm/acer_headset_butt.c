@@ -31,6 +31,7 @@
 #include <linux/mutex.h>
 #include <linux/switch.h>
 #include <linux/input.h>
+#include <linux/slab.h>
 #include <asm/gpio.h>
 #include <mach/acer_headset_butt.h>
 #include <mach/acer_headset.h>

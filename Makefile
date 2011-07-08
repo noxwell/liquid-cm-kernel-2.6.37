@@ -3,6 +3,8 @@ PATCHLEVEL = 6
 SUBLEVEL = 37
 EXTRAVERSION = .6
 NAME = Flesh-Eating Bats with Fangs
+ARCH=arm
+CROSS_COMPILE=arm-2010q1/bin/arm-none-linux-gnueabi-
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"

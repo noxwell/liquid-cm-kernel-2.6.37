@@ -46,6 +46,8 @@
 #define VDEC_IOCTL_GETDECATTRIBUTES   _IOR(VDEC_IOCTL_MAGIC, 10, \
 						struct vdec_dec_attributes)
 #define VDEC_IOCTL_GETVERSION   _IOR(VDEC_IOCTL_MAGIC, 11, struct vdec_version)
+#define VDEC_IOCTL_PERFORMANCE_CHANGE_REQ  _IOW(VDEC_IOCTL_MAGIC, 14, \
+						unsigned int)
 
 enum {
 	VDEC_FRAME_DECODE_OK,

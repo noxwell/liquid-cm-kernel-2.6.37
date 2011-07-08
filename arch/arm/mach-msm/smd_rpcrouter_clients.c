@@ -62,6 +62,7 @@
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
+#include <linux/slab.h>
 
 #include <mach/msm_rpcrouter.h>
 #include "smd_rpcrouter.h"

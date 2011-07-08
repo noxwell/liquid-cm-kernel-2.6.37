@@ -34,6 +34,7 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/wakelock.h>
+#include <linux/slab.h>
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
 #include <linux/platform_device.h>

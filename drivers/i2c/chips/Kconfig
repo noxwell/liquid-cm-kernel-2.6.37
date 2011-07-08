@@ -12,5 +12,12 @@ config SENSORS_MT9T013
 	default y
 	help
 	 MT9T013 Camera Driver implemented by HTC.
+	 
+config AVR
+	tristate "AVR micro-P driver"
+	depends on I2C=y
+	default n
+	help
+	  If you say yes here you get support for AVR micro-P driver.
 
 endmenu

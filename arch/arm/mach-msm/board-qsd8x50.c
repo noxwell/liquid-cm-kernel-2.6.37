@@ -59,6 +59,7 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
+#include <linux/fs.h>
 #include <linux/android_pmem.h>
 #include <linux/bootmem.h>
 #include <linux/usb/mass_storage_function.h>
@@ -71,6 +72,7 @@
 #include <linux/clk.h>
 #include <linux/mutex.h>
 #include <linux/wakelock.h>
+
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -1866,6 +1868,7 @@ int bcm_wlan_power_off(int a) {
 //	(void)a;
 	wifi_power(2*a-2);
 	//wifi_set_carddetect(0);
+	return 0;
 }
 EXPORT_SYMBOL(bcm_wlan_power_off);
 
@@ -1873,6 +1876,7 @@ int bcm_wlan_power_on(int a) {
 //	(void)a;
 	wifi_power(2*a-1);
 	//wifi_set_carddetect(1);
+	return 0;
 }
 EXPORT_SYMBOL(bcm_wlan_power_on);
 
@@ -3251,7 +3255,7 @@ static void __init pmem_kernel_ebi1_size_setup(char **p)
 {
 	pmem_kernel_ebi1_size = memparse(*p, p);
 }
-__early_param("pmem_kernel_ebi1_size=", pmem_kernel_ebi1_size_setup);
+early_param("pmem_kernel_ebi1_size=", pmem_kernel_ebi1_size_setup);
 
 #ifdef CONFIG_KERNEL_PMEM_SMI_REGION
 static unsigned pmem_kernel_smi_size = MSM_PMEM_SMIPOOL_SIZE;
@@ -3266,7 +3270,7 @@ static void __init pmem_kernel_smi_size_setup(char **p)
 	if (pmem_kernel_smi_size > MSM_PMEM_SMIPOOL_SIZE)
 		pmem_kernel_smi_size = MSM_PMEM_SMIPOOL_SIZE;
 }
-__early_param("pmem_kernel_smi_size=", pmem_kernel_smi_size_setup);
+early_param("pmem_kernel_smi_size=", pmem_kernel_smi_size_setup);
 #endif
 
 static unsigned pmem_mdp_size = MSM_PMEM_MDP_SIZE;
@@ -3276,14 +3280,14 @@ static void __init pmem_mdp_size_setup(char **p)
 	if (pmem_mdp_size > MSM_PMEM_MDP_SIZE)
 		pmem_mdp_size = MSM_PMEM_MDP_SIZE;
 }
-__early_param("pmem_mdp_size=", pmem_mdp_size_setup);
+early_param("pmem_mdp_size=", pmem_mdp_size_setup);
 
 static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
 static void __init pmem_adsp_size_setup(char **p)
 {
 	pmem_adsp_size = memparse(*p, p);
 }
-__early_param("pmem_adsp_size=", pmem_adsp_size_setup);
+early_param("pmem_adsp_size=", pmem_adsp_size_setup);
 
 static void __init qsd8x50_init(void)
 {

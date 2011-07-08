@@ -13,7 +13,8 @@
  * GNU General Public License for more details.
  *
  */
-
+ 
+#include <linux/gpio.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 
@@ -25,6 +26,7 @@
 
 #include "devices.h"
 #include "smd_private.h"
+#include "proc_comm.h"
 
 #include <asm/mach/flash.h>
 
@@ -220,6 +222,42 @@ struct platform_device msm_device_i2c_2 = {
 	.num_resources	= ARRAY_SIZE(resources_i2c_2),
 	.resource	= resources_i2c_2,
 };
+
+#define GPIO_I2C_CLK 95
+#define GPIO_I2C_DAT 96
+static int gpio_i2c_clk = -1;
+static int gpio_i2c_dat = -1;
+void msm_set_i2c_mux(bool gpio, int *gpio_clk, int *gpio_dat)
+{
+	unsigned id;
+
+	if (gpio_i2c_clk < 0) {
+		gpio_request(GPIO_I2C_CLK, "i2c-clk");
+		gpio_i2c_clk = GPIO_I2C_CLK;
+	}
+	if (gpio_i2c_dat < 0) {
+		gpio_request(GPIO_I2C_DAT, "i2c-dat");
+		gpio_i2c_dat = GPIO_I2C_DAT;
+	}
+
+	if (gpio) {
+		id = PCOM_GPIO_CFG(GPIO_I2C_CLK, 0, GPIO_OUTPUT,
+				   GPIO_NO_PULL, GPIO_2MA);
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+		id = PCOM_GPIO_CFG(GPIO_I2C_DAT, 0, GPIO_OUTPUT,
+				   GPIO_NO_PULL, GPIO_2MA);
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+		*gpio_clk = GPIO_I2C_CLK;
+		*gpio_dat = GPIO_I2C_DAT;
+	} else {
+		id = PCOM_GPIO_CFG(GPIO_I2C_CLK, 1, GPIO_INPUT,
+				   GPIO_NO_PULL, GPIO_8MA);
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+		id = PCOM_GPIO_CFG(GPIO_I2C_DAT , 1, GPIO_INPUT,
+				   GPIO_NO_PULL, GPIO_8MA);
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+	}
+}
 
 static struct resource resources_i2c[] = {
 	{

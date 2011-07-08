@@ -61,6 +61,7 @@
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
 
 #include <mach/dma.h>
 #include <mach/dma_test.h>
@@ -75,12 +76,16 @@
  */
 #define MAX_TEST_BUFFERS 40
 #define MAX_TEST_BUFFER_SIZE 65536
+
+#define init_MUTEX(sem)		sema_init(sem, 1)
+#define init_MUTEX_LOCKED(sem)	sema_init(sem, 0)
+
 static void *(buffers[MAX_TEST_BUFFERS]);
 static int sizes[MAX_TEST_BUFFERS];
 
 /* Anything that allocates or deallocates buffers must lock with this
  * mutex. */
-static DECLARE_MUTEX(buffer_lock);
+static DEFINE_SEMAPHORE(buffer_lock);
 
 /* Each buffer has a semaphore associated with it that will be held
  * for the duration of any operations on that buffer.  It also must be
@@ -254,7 +259,7 @@ static int dma_test_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int dma_test_ioctl(struct inode *inode, struct file *file,
+static long dma_test_ioctl(struct file *file,
 			  unsigned cmd, unsigned long arg)
 {
 	int err = 0;
@@ -363,7 +368,7 @@ static int dma_test_ioctl(struct inode *inode, struct file *file,
 
 static const struct file_operations dma_test_fops = {
 	.owner = THIS_MODULE,
-	.ioctl = dma_test_ioctl,
+	.unlocked_ioctl = dma_test_ioctl,
 	.open = dma_test_open,
 	.release = dma_test_release,
 };

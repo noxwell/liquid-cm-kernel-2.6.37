@@ -45,6 +45,7 @@
 #define AUDIO_ADSP_PAUSE            _IOR(AUDIO_IOCTL_MAGIC, 17, unsigned)
 #define AUDIO_ADSP_RESUME           _IOR(AUDIO_IOCTL_MAGIC, 18, unsigned)
 #define AUDIO_PLAY_DTMF             _IOW(AUDIO_IOCTL_MAGIC, 19, unsigned)
+#define AUDIO_SET_INCALL            _IOW(AUDIO_IOCTL_MAGIC, 19, struct msm_voicerec_mode)
 #define AUDIO_GET_AAC_CONFIG        _IOR(AUDIO_IOCTL_MAGIC, 20, unsigned)
 #define AUDIO_GET_AMRNB_ENC_CONFIG  _IOW(AUDIO_IOCTL_MAGIC, 21, unsigned)
 #define AUDIO_SET_AMRNB_ENC_CONFIG  _IOR(AUDIO_IOCTL_MAGIC, 22, unsigned)
@@ -55,6 +56,10 @@
 #define AUDIO_UPDATE_ACDB    _IOW(AUDIO_IOCTL_MAGIC, 34, unsigned)
 #define AUDIO_START_VOICE    _IOW(AUDIO_IOCTL_MAGIC, 35, unsigned)
 #define AUDIO_STOP_VOICE     _IOW(AUDIO_IOCTL_MAGIC, 36, unsigned)
+#define AUDIO_SET_STREAM_CONFIG   _IOW(AUDIO_IOCTL_MAGIC, 80, \
+				struct msm_audio_stream_config)
+#define AUDIO_GET_STREAM_CONFIG   _IOR(AUDIO_IOCTL_MAGIC, 81, \
+				struct msm_audio_stream_config)
 #define AUDIO_START_FM              _IOW(AUDIO_IOCTL_MAGIC, 37, unsigned)
 #define AUDIO_STOP_FM               _IOW(AUDIO_IOCTL_MAGIC, 38, unsigned)
 #define AUDIO_REINIT_ACDB    _IOW(AUDIO_IOCTL_MAGIC, 39, unsigned)
@@ -73,6 +78,11 @@ struct msm_audio_config {
 	uint32_t sample_rate;
 	uint32_t type;
 	uint32_t unused[3];
+};
+
+struct msm_audio_stream_config {
+	uint32_t buffer_size;
+	uint32_t buffer_count;
 };
 
 struct msm_audio_stats {
@@ -125,6 +135,14 @@ struct msm_mute_info {
 #define AAC_OBJECT_BSAC			22
 #define AAC_OBJECT_ER_LD		23
 
+struct msm_audio_aio_buf {
+	void *buf_addr;
+	uint32_t buf_len;
+	uint32_t data_len;
+	void *private_data;
+	unsigned short mfield_sz; /*only useful for data has meta field */
+};
+
 struct aac_format {
 	uint16_t	sample_rate;
 	uint16_t	channel_config;
@@ -170,6 +188,10 @@ struct msm_audio_amrnb_enc_config {
 #define SND_MUTE_UNMUTED 0
 #define SND_MUTE_MUTED   1
 
+struct msm_voicerec_mode {
+	uint32_t rec_mode;
+};
+
 struct msm_snd_device_config {
 	uint32_t device;
 	uint32_t ear_mute;
@@ -212,4 +234,95 @@ struct msm_audio_pcm_config {
 	uint32_t buffer_size;	/* Size of buffer for capturing of
 				   PCM samples */
 };
+
+#define AUDIO_EVENT_SUSPEND 0
+#define AUDIO_EVENT_RESUME 1
+#define AUDIO_EVENT_WRITE_DONE 2
+#define AUDIO_EVENT_READ_DONE   3
+#define AUDIO_EVENT_STREAM_INFO 4
+#define AUDIO_EVENT_BITSTREAM_ERROR_INFO 5
+
+#define AUDIO_CODEC_TYPE_MP3 0
+#define AUDIO_CODEC_TYPE_AAC 1
+
+struct msm_audio_bitstream_info {
+	uint32_t codec_type;
+	uint32_t chan_info;
+	uint32_t sample_rate;
+	uint32_t bit_stream_info;
+	uint32_t bit_rate;
+	uint32_t unused[3];
+};
+
+struct msm_audio_bitstream_error_info {
+	uint32_t dec_id;
+	uint32_t err_msg_indicator;
+	uint32_t err_type;
+};
+
+union msm_audio_event_payload {
+	struct msm_audio_aio_buf aio_buf;
+	struct msm_audio_bitstream_info stream_info;
+	struct msm_audio_bitstream_error_info error_info;
+	int reserved;
+};
+
+struct msm_audio_event {
+	int event_type;
+	int timeout_ms;
+	union msm_audio_event_payload event_payload;
+};
+
+#define MSM_SNDDEV_CAP_RX 0x1
+#define MSM_SNDDEV_CAP_TX 0x2
+#define MSM_SNDDEV_CAP_VOICE 0x4
+
+struct msm_snd_device_info {
+	uint32_t dev_id;
+	uint32_t dev_cap; /* bitmask describe capability of device */
+	char dev_name[64];
+};
+
+struct msm_snd_device_list {
+	uint32_t  num_dev; /* Indicate number of device info to be retrieved */
+	struct msm_snd_device_info *list;
+};
+
+struct msm_dtmf_config {
+	uint16_t path;
+	uint16_t dtmf_hi;
+	uint16_t dtmf_low;
+	uint16_t duration;
+	uint16_t tx_gain;
+	uint16_t rx_gain;
+	uint16_t mixing;
+};
+
+#define AUDIO_ROUTE_STREAM_VOICE_RX 0
+#define AUDIO_ROUTE_STREAM_VOICE_TX 1
+#define AUDIO_ROUTE_STREAM_PLAYBACK 2
+#define AUDIO_ROUTE_STREAM_REC      3
+
+struct msm_audio_route_config {
+	uint32_t stream_type;
+	uint32_t stream_id;
+	uint32_t dev_id;
+};
+
+#define AUDIO_MAX_EQ_BANDS 12
+
+struct msm_audio_eq_band {
+	uint16_t     band_idx; /* The band index, 0 .. 11 */
+	uint32_t     filter_type; /* Filter band type */
+	uint32_t     center_freq_hz; /* Filter band center frequency */
+	uint32_t     filter_gain; /* Filter band initial gain (dB) */
+			/* Range is +12 dB to -12 dB with 1dB increments. */
+	uint32_t     q_factor;
+} __attribute__ ((packed));
+
+struct msm_audio_eq_stream_config {
+	uint32_t	enable; /* Number of consequtive bands specified */
+	uint32_t	num_bands;
+	struct msm_audio_eq_band	eq_bands[AUDIO_MAX_EQ_BANDS];
+} __attribute__ ((packed));
 #endif

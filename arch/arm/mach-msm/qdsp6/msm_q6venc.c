@@ -65,6 +65,7 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
+#include <linux/slab.h>
 #include <linux/android_pmem.h>
 #include <linux/msm_q6venc.h>
 #include "dal.h"
@@ -865,7 +866,7 @@ static void venc_q6_callback(void *data, int len, void *cookie)
 	struct venc_msg_type *q6_msg = NULL;
 	struct venc_msg msg, msg1;
 	union venc_msg_data smsg1, smsg2;
-	unsigned long msg_code;
+	unsigned long msg_code=0;
 	struct venc_input_payload *pload1;
 	struct venc_output_payload *pload2;
 	uint32_t * tmp = (uint32_t *) data;

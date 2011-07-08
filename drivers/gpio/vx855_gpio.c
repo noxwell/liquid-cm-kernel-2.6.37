@@ -30,6 +30,7 @@
 #include <linux/platform_device.h>
 #include <linux/pci.h>
 #include <linux/io.h>
+#include <linux/slab.h>
 
 #define MODULE_NAME "vx855_gpio"
 

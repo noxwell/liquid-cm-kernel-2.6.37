@@ -180,7 +180,7 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr)
 	init_completion(&cmd.complete);
 
 	msm_dmov_enqueue_cmd(id, &cmd.dmov_cmd);
-	wait_for_completion_io(&cmd.complete);
+	wait_for_completion(&cmd.complete);
 
 	if (cmd.result != 0x80000002) {
 		PRINT_ERROR("dmov_exec_cmdptr(%d): ERROR, result: %x\n", id, cmd.result);
@@ -354,7 +354,7 @@ static int msm_dmov_suspend_late(struct platform_device *pdev,
 }
 
 static struct platform_driver msm_dmov_driver = {
-	.suspend_late = msm_dmov_suspend_late,
+	.suspend = msm_dmov_suspend_late,
 	.driver = {
 		.name = MODULE_NAME,
 		.owner = THIS_MODULE,

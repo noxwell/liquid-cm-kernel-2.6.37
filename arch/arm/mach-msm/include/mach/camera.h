@@ -108,6 +108,7 @@ struct msm_sensor_ctrl {
 	int (*s_init)(const struct msm_camera_sensor_info *);
 	int (*s_release)(void);
 	int (*s_config)(void __user *);
+	int node;
 };
 
 /* this structure is used in kernel */
@@ -159,6 +160,7 @@ struct msm_sync {
 	struct msm_camera_sensor_info *sdata;
 	struct msm_camvfe_fn vfefn;
 	struct msm_sensor_ctrl sctrl;
+	struct wake_lock wake_suspend_lock;
 	struct wake_lock wake_lock;
 	struct platform_device *pdev;
 	uint8_t opencnt;
@@ -168,6 +170,11 @@ struct msm_sync {
 	uint32_t pp_mask;
 	struct msm_queue_cmd *pp_prev;
 	struct msm_queue_cmd *pp_snap;
+	
+	/* When this flag is set, we send preview-frame notifications to config
+	 * as well as to the frame queue.  By default, the flag is cleared.
+	 */
+	uint32_t report_preview_to_config;
 
 	const char *apps_id;
 
@@ -210,6 +217,7 @@ struct register_address_value_pair {
 struct msm_pmem_region {
 	struct hlist_node list;
 	unsigned long paddr;
+	unsigned long kvaddr;
 	unsigned long len;
 	struct file *file;
 	struct msm_pmem_info info;
@@ -255,10 +263,11 @@ int msm_v4l2_unregister(struct msm_v4l2_driver *);
 void msm_camvfe_init(void);
 int msm_camvfe_check(void *);
 void msm_camvfe_fn_init(struct msm_camvfe_fn *, void *);
+#ifndef _MSM_CAMERA_C
 int msm_camera_drv_start(struct platform_device *dev,
 		int (*sensor_probe)(const struct msm_camera_sensor_info *,
 					struct msm_sensor_ctrl *));
-
+#endif
 enum msm_camio_clk_type {
 	CAMIO_VFE_MDC_CLK,
 	CAMIO_MDC_CLK,

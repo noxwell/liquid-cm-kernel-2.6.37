@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#define _LIQUID_COMPAT_GPIO
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <linux/irq.h>

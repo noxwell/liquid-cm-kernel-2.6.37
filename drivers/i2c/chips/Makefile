@@ -12,6 +12,8 @@
 
 obj-$(CONFIG_SENSORS_MT9T013)	+= mt9t013.o
 
+obj-$(CONFIG_AVR)		+= avr.o
+
 ifeq ($(CONFIG_I2C_DEBUG_CHIP),y)
 EXTRA_CFLAGS += -DDEBUG
 endif

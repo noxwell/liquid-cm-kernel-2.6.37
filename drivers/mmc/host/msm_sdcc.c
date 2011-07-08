@@ -357,18 +357,7 @@ EXPORT_SYMBOL(msmsdcc_stop_data);
 
 uint32_t msmsdcc_fifo_addr(struct msmsdcc_host *host)
 {
-	switch (host->pdev_id) {
-	case 1:
-		return MSM_SDC1_PHYS + MMCIFIFO;
-	case 2:
-		return MSM_SDC2_PHYS + MMCIFIFO;
-	case 3:
-		return MSM_SDC3_PHYS + MMCIFIFO;
-	case 4:
-		return MSM_SDC4_PHYS + MMCIFIFO;
-	}
-	BUG();
-	return 0;
+	return host->memres->start + MMCIFIFO;
 }
 
 static inline void
@@ -380,7 +369,7 @@ msmsdcc_start_command_exec(struct msmsdcc_host *host, u32 arg, u32 c) {
 static void
 msmsdcc_dma_exec_func(struct msm_dmov_cmd *cmd)
 {
-	struct msmsdcc_host *host = (struct msmsdcc_host *)cmd->data;
+	struct msmsdcc_host *host = (struct msmsdcc_host *)cmd->user;
 
 	msmsdcc_writel(host, host->cmd_timeout, MMCIDATATIMER);
 	msmsdcc_writel(host, (unsigned int)host->curr.xfer_size,
@@ -586,7 +575,6 @@ static int msmsdcc_config_dma(struct msmsdcc_host *host, struct mmc_data *data)
 	host->dma.hdr.cmdptr = DMOV_CMD_PTR_LIST |
 			       DMOV_CMD_ADDR(host->dma.cmdptr_busaddr);
 	host->dma.hdr.complete_func = msmsdcc_dma_complete_func;
-	host->dma.hdr.execute_func = NULL;
 
 	n = dma_map_sg(mmc_dev(host->mmc), host->dma.sg,
 			host->dma.num_ents, host->dma.dir);
@@ -694,8 +682,8 @@ msmsdcc_start_data(struct msmsdcc_host *host, struct mmc_data *data,
 		host->cmd_datactrl = datactrl;
 		host->cmd_cmd = cmd;
 
-		host->dma.hdr.execute_func = msmsdcc_dma_exec_func;
-		host->dma.hdr.data = (void *)host;
+		host->dma.hdr.exec_func = msmsdcc_dma_exec_func;
+		host->dma.hdr.user = (void *)host;
 		host->dma.busy = 1;
 
 		if (cmd) {

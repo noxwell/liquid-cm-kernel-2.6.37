@@ -21,6 +21,7 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/errno.h>
+#include <linux/slab.h>
 
 #include <linux/delay.h>
 

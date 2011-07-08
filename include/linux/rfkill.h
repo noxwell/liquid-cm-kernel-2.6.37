@@ -22,10 +22,21 @@
 #include <linux/types.h>
 
 /* define userspace visible states */
+#ifndef _BLUEPOWER_COMPAT
+
 #define RFKILL_STATE_SOFT_BLOCKED	0
 #define RFKILL_STATE_UNBLOCKED		1
 #define RFKILL_STATE_HARD_BLOCKED	2
 
+#endif
+#ifdef _BLUEPOWER_COMPAT
+enum rfkill_state {
+	RFKILL_STATE_SOFT_BLOCKED = 0,	/* Radio output blocked */
+	RFKILL_STATE_UNBLOCKED    = 1,	/* Radio output allowed */
+	RFKILL_STATE_HARD_BLOCKED = 2,	/* Output blocked, non-overrideable */
+	RFKILL_STATE_MAX,		/* marker for last valid state */
+};
+#endif
 /**
  * enum rfkill_type - type of rfkill switch.
  *

@@ -118,7 +118,7 @@ void usb_composite_force_reset(struct usb_composite_dev *cdev)
 		spin_unlock_irqrestore(&cdev->lock, flags);
 
 		usb_gadget_disconnect(cdev->gadget);
-		msleep(10);
+		//msleep(10);
 		usb_gadget_connect(cdev->gadget);
 	} else {
 		spin_unlock_irqrestore(&cdev->lock, flags);
@@ -152,19 +152,6 @@ int usb_add_function(struct usb_configuration *config,
 
 	if (!function->set_alt || !function->disable)
 		goto done;
-
-	index = atomic_inc_return(&cdev->driver->function_count);
-	function->dev = device_create(cdev->driver->class, NULL,
-		MKDEV(0, index), NULL, function->name);
-	if (IS_ERR(function->dev))
-		return PTR_ERR(function->dev);
-
-	value = device_create_file(function->dev, &dev_attr_enable);
-	if (value < 0) {
-		device_destroy(cdev->driver->class, MKDEV(0, index));
-		return value;
-	}
-	dev_set_drvdata(function->dev, function);
 
 	function->config = config;
 	list_add_tail(&function->list, &config->functions);

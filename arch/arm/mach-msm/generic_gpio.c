@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#define _LIQUID_COMPAT_GPIO
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/errno.h>

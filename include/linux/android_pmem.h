@@ -35,6 +35,22 @@
 #define PMEM_GET_TOTAL_SIZE	_IOW(PMEM_IOCTL_MAGIC, 7, unsigned int)
 #define PMEM_CACHE_FLUSH	_IOW(PMEM_IOCTL_MAGIC, 8, unsigned int)
 
+#define PMEM_KERNEL_EBI1_DATA_NAME "pmem_kernel_ebi1"
+#define PMEM_KERNEL_SMI_DATA_NAME "pmem_kernel_smi"
+
+enum pmem_allocator_type {
+	/* Zero is a default in platform PMEM structures in the board files,
+	 * when the "allocator_type" structure element is not explicitly
+	 * defined
+	 */
+	PMEM_ALLOCATORTYPE_BITMAP = 0, /* forced to be zero here */
+
+	PMEM_ALLOCATORTYPE_ALLORNOTHING,
+	PMEM_ALLOCATORTYPE_BUDDYBESTFIT,
+
+	PMEM_ALLOCATORTYPE_MAX,
+};
+
 struct android_pmem_platform_data
 {
 	const char* name;
@@ -42,6 +58,7 @@ struct android_pmem_platform_data
 	unsigned long start;
 	/* size of memory region */
 	unsigned long size;
+	enum pmem_allocator_type allocator_type;
 	/* set to indicate the region should not be managed with an allocator */
 	unsigned no_allocator;
 	/* set to indicate maps of this region should be cached, if a mix of

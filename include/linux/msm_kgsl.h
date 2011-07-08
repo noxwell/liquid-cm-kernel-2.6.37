@@ -100,6 +100,17 @@ struct kgsl_shadowprop {
 	unsigned int flags; /* contains KGSL_FLAGS_ values */
 };
 
+struct kgsl_platform_data {
+	unsigned int high_axi_2d;
+	unsigned int high_axi_3d;
+	unsigned int max_grp2d_freq;
+	unsigned int min_grp2d_freq;
+	int (*set_grp2d_async)(void);
+	unsigned int max_grp3d_freq;
+	unsigned int min_grp3d_freq;
+	int (*set_grp3d_async)(void);
+};
+
 /* ioctls */
 #define KGSL_IOC_TYPE 0x09
 

@@ -18,6 +18,7 @@
 
 #include <linux/list.h>
 
+#ifndef _LIQUID_COMPAT_GPIO
 struct gpio_chip {
 	struct list_head list;
 	struct gpio_state *state;
@@ -34,6 +35,7 @@ struct gpio_chip {
 	int (*read_detect_status)(struct gpio_chip *chip, unsigned int gpio);
 	int (*clear_detect_status)(struct gpio_chip *chip, unsigned int gpio);
 };
+#endif
 
 struct msm_gpio_regs {
 	void __iomem *out;

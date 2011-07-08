@@ -25,7 +25,7 @@ static int fm2018_probe(struct i2c_client *client, const struct i2c_device_id *i
 static int fm2018_remove(struct i2c_client *client);
 static int fm2018_open(struct inode *inode, struct file *file);
 static int fm2018_close(struct inode *inode, struct file *file);
-static int fm2018_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg);
+static long fm2018_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 static int i2c_write(struct i2c_client *client, char *buf, int count);
 static int i2c_read(struct i2c_client *client, char *buf, int count);
 static int fm2018_write(int regH, int regL, int dataH, int dataL);
@@ -50,7 +50,7 @@ static const struct file_operations fm2018_fops = {
 	.owner      = THIS_MODULE,
 	.open       = fm2018_open,
 	.release    = fm2018_close,
-	.ioctl      = fm2018_ioctl,
+	.unlocked_ioctl      = fm2018_ioctl,
 };
 
 static struct i2c_driver fm2018_driver = {
@@ -398,7 +398,7 @@ int fm2018_set_procedure(int commad)
 	}
 }
 
-static int fm2018_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
+static long fm2018_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 

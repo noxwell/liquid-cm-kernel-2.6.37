@@ -146,7 +146,7 @@ static uint32_t msm_read_timer_count(struct msm_clock *clock)
 	}
 }
 
-static cycle_t msm_gpt_read(void)
+static cycle_t msm_gpt_read(struct clocksource *cs)
 {
 	struct msm_clock *clock = &msm_clocks[MSM_CLOCK_GPT];
 	if (clock->stopped)
@@ -155,7 +155,7 @@ static cycle_t msm_gpt_read(void)
 		return msm_read_timer_count(clock) + clock->sleep_offset;
 }
 
-static cycle_t msm_dgt_read(void)
+static cycle_t msm_dgt_read(struct clocksource *cs)
 {
 	struct msm_clock *clock = &msm_clocks[MSM_CLOCK_DGT];
 	if (clock->stopped)
@@ -567,7 +567,8 @@ int64_t msm_timer_enter_idle(void)
 	}
 	if (delta <= 0)
 		return 0;
-	return cyc2ns(&clock->clocksource, (alarm - count) >> clock->shift);
+	return clocksource_cyc2ns((alarm - count) >> clock->shift,
+			clock->clocksource.mult, clock->clocksource.shift);
 }
 
 void msm_timer_exit_idle(int low_power)
@@ -711,17 +712,18 @@ unsigned long long sched_clock(void)
 		cs = &clock->clocksource;
 
 		last_ticks = saved_ticks;
-		saved_ticks = ticks = cs->read();
+		saved_ticks = ticks = cs->read(cs);
 		if (!saved_ticks_valid) {
 			saved_ticks_valid = 1;
 			last_ticks = ticks;
-			base -= cyc2ns(cs, ticks);
+			base -= clocksource_cyc2ns(ticks, cs->mult, cs->shift);
 		}
 		if (ticks < last_ticks) {
-			base += cyc2ns(cs, cs->mask);
-			base += cyc2ns(cs, 1);
+			base += clocksource_cyc2ns(cs->mask,
+						   cs->mult, cs->shift);
+			base += clocksource_cyc2ns(1, cs->mult, cs->shift);
 		}
-		last_result = result = cyc2ns(cs, ticks) + base;
+		last_result = result = clocksource_cyc2ns(ticks, cs->mult, cs->shift) + base;
 	} else {
 		base = result = last_result;
 		saved_ticks_valid = 0;

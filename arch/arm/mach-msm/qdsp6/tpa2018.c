@@ -43,7 +43,7 @@ static int i2c_read(struct i2c_client *client, char *buf, int count);
 static void tpa2018_arg_init(void);
 static int tpa2018_check_gpio_and_regvalue(void);
 static int tpa2018_set_limitor(int type);
-static int tpa2018_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg);
+static long tpa2018_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 static int tpa2018_suspend(struct i2c_client *client, pm_message_t mesg);
 static int tpa2018_resume(struct i2c_client *client);
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -72,7 +72,7 @@ static const struct file_operations tpa2018_fops = {
 	.owner      = THIS_MODULE,
 	.open       = tpa2018_open,
 	.release    = tpa2018_close,
-	.ioctl      = tpa2018_ioctl,
+	.unlocked_ioctl      = tpa2018_ioctl,
 };
 
 static struct i2c_driver tpa2018_driver = {
@@ -426,7 +426,7 @@ int tpa2018_set_control(int commad, int regiter, int value)
 	}
 }
 
-static int tpa2018_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
+static long tpa2018_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 	u32 uparam;

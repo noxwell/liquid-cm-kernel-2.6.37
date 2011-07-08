@@ -41,6 +41,7 @@
 #include <linux/ioctl.h>
 #include <linux/mutex.h>
 #include <linux/input.h>
+#include <linux/slab.h>
 #include <asm/gpio.h>
 #include <mach/acer_headset.h>
 #include <mach/acer_headset_butt.h>
@@ -62,7 +63,7 @@ static int acer_hs_probe(struct platform_device *pdev);
 static int acer_hs_remove(struct platform_device *pdev);
 static int acer_hs_open(struct inode *inode, struct file *file);
 static int acer_hs_close(struct inode *inode, struct file *file);
-static int acer_hs_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg);
+static long acer_hs_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 
 static void enable_amp_work(struct work_struct *work);
 static void acer_headset_delay_set_work(struct work_struct *work);
@@ -81,7 +82,7 @@ static const struct file_operations acer_hs_fops = {
 	.owner		= THIS_MODULE,
 	.open		= acer_hs_open,
 	.release	= acer_hs_close,
-	.ioctl		= acer_hs_ioctl,
+	.unlocked_ioctl		= acer_hs_ioctl,
 };
 
 static struct platform_driver acer_hs_driver = {
@@ -347,7 +348,7 @@ static int acer_hs_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int acer_hs_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
+static long acer_hs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 	u32 uparam;

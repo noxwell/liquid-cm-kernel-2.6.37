@@ -60,6 +60,7 @@
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
+#include <linux/slab.h>
 
 #include <mach/pmic.h>
 

@@ -61,6 +61,7 @@
 #include <mach/rpc_pmapp.h>
 #include <mach/msm_rpcrouter.h>
 #include <mach/vreg.h>
+#include <linux/slab.h>
 
 #define PM_APP_USB_PROG				0x30000060
 #define PM_APP_USB_VERS_1_1			0x00010001

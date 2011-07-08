@@ -79,6 +79,7 @@
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 
 #include <mach/msm_rpcrouter.h>
 

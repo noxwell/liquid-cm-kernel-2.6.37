@@ -97,6 +97,12 @@ struct msm_hsusb_platform_data {
 	int vreg5v_required;
 
 	u32 swfi_latency;
+	
+	/* val, reg pairs terminated by -1 */
+	int *phy_init_seq;
+	
+	/* for notification when USB is connected or disconnected */
+	void (*usb_connected)(int);
 };
 
 struct msm_otg_platform_data {

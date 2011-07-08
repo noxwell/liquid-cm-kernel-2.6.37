@@ -68,6 +68,7 @@
 #include <linux/mutex.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
+#include <linux/slab.h>
 #include <asm/ioctls.h>
 
 #include <mach/msm_smd.h>
@@ -178,8 +179,7 @@ static int modem_notifier(struct notifier_block *this,
 	return NOTIFY_DONE;
 }
 
-int smd_ctl_ioctl(struct inode *inode,
-		    struct file *file,
+long smd_ctl_ioctl(struct file *file,
 		    unsigned int cmd,
 		    unsigned long arg)
 {
@@ -516,7 +516,7 @@ static const struct file_operations smd_ctl_fops = {
 	.release = smd_ctl_release,
 	.read = smd_ctl_read,
 	.write = smd_ctl_write,
-	.ioctl = smd_ctl_ioctl,
+	.unlocked_ioctl = smd_ctl_ioctl,
 };
 
 static int __init smd_ctl_init(void)

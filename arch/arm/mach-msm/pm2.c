@@ -739,73 +739,50 @@ static void msm_pm_add_stat(enum msm_pm_time_stats_id id, int64_t t)
 /*
  * Write out the power management statistics.
  */
-static int msm_pm_read_proc
-	(char *page, char **start, off_t off, int count, int *eof, void *data)
+static int msm_pm_read_proc(char *page, char **start, off_t off,
+                               int count, int *eof, void *data)
 {
-	int i;
+	int len = 0;
+	int i, j;
 	char *p = page;
-	char clk_name[16];
 
-	if (count < 1024) {
-		*start = (char *) 0;
-		*eof = 0;
-		return 0;
-	}
-
-	if (!off) {
-		SNPRINTF(p, count, "Clocks against last TCXO shutdown:\n");
-		for_each_bit(i, msm_pm_clocks_no_tcxo_shutdown, NR_CLKS) {
-			clk_name[0] = '\0';
-			msm_clock_get_name(i, clk_name, sizeof(clk_name));
-			SNPRINTF(p, count, "  %s (id=%d)\n", clk_name, i);
-		}
-
-		SNPRINTF(p, count, "Last power collapse voted ");
-		if (msm_pm_sleep_limit == SLEEP_LIMIT_NONE)
-			SNPRINTF(p, count, "for TCXO shutdown\n\n");
-		else
-			SNPRINTF(p, count, "against TCXO shutdown\n\n");
-
-		*start = (char *) 1;
-		*eof = 0;
-	} else if (--off < ARRAY_SIZE(msm_pm_stats)) {
+	for (i = 0; i < ARRAY_SIZE(msm_pm_stats); i++) {
 		int64_t bucket_time;
 		int64_t s;
 		uint32_t ns;
-
-		s = msm_pm_stats[off].total_time;
+		s = msm_pm_stats[i].total_time;
 		ns = do_div(s, NSEC_PER_SEC);
-		SNPRINTF(p, count,
+		p += sprintf(p,
 			"%s:\n"
 			"  count: %7d\n"
 			"  total_time: %lld.%09u\n",
-			msm_pm_stats[off].name,
-			msm_pm_stats[off].count,
+			msm_pm_stats[i].name,
+			msm_pm_stats[i].count,
 			s, ns);
-
-		bucket_time = msm_pm_stats[off].first_bucket_time;
-		for (i = 0; i < CONFIG_MSM_IDLE_STATS_BUCKET_COUNT - 1; i++) {
+		bucket_time = CONFIG_MSM_IDLE_STATS_FIRST_BUCKET;
+		for (j = 0; j < CONFIG_MSM_IDLE_STATS_BUCKET_COUNT - 1; j++) {
 			s = bucket_time;
 			ns = do_div(s, NSEC_PER_SEC);
-			SNPRINTF(p, count,
-				"   <%6lld.%09u: %7d (%lld-%lld)\n",
-				s, ns, msm_pm_stats[off].bucket[i],
-				msm_pm_stats[off].min_time[i],
-				msm_pm_stats[off].max_time[i]);
-
+			p += sprintf(p, "   <%2lld.%09u: %7d (%lld-%lld)\n",
+				s, ns, msm_pm_stats[i].bucket[j],
+				msm_pm_stats[i].min_time[j],
+				msm_pm_stats[i].max_time[j]);
 			bucket_time <<= CONFIG_MSM_IDLE_STATS_BUCKET_SHIFT;
 		}
-
-		SNPRINTF(p, count, "  >=%6lld.%09u: %7d (%lld-%lld)\n",
-			s, ns, msm_pm_stats[off].bucket[i],
-			msm_pm_stats[off].min_time[i],
-			msm_pm_stats[off].max_time[i]);
-
-		*start = (char *) 1;
-		*eof = (off + 1 >= ARRAY_SIZE(msm_pm_stats));
+		p += sprintf(p, "  >=%2lld.%09u: %7d (%lld-%lld)\n",
+			s, ns, msm_pm_stats[i].bucket[j],
+			msm_pm_stats[i].min_time[j],
+			msm_pm_stats[i].max_time[j]);
 	}
+	*start = page + off;
 
-	return p - page;
+	len = p - page;
+	if (len > off)
+		len -= off;
+	else
+		len = 0;
+
+	return len < count ? len  : count;
 }
 #undef SNPRINTF
 
@@ -1387,7 +1364,7 @@ void arch_idle(void)
 	if (!atomic_read(&msm_pm_init_done))
 		return;
 
-	latency_qos = pm_qos_requirement(PM_QOS_CPU_DMA_LATENCY);
+	latency_qos = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
 	timer_expiration = msm_timer_enter_idle();
 
 #ifdef CONFIG_MSM_IDLE_STATS
@@ -1701,7 +1678,7 @@ static void msm_pm_power_off(void)
 	}
 }
 
-static void msm_pm_restart(char str)
+static void msm_pm_restart(char str, const char *cmd)
 {
 #ifdef CONFIG_MACH_ACER_A1
 	unsigned id = 8;	//ACER_SMSM_PROC_CMD_SD_DOWNLOAD

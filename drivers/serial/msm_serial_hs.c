@@ -37,7 +37,7 @@
  * always be lost. RTS will be asserted even while the UART is off in this mode
  * of operation. See msm_serial_hs_platform_data.rx_wakeup_irq.
  */
-
+#define _MSM_SERIAL_HS_C_COMPAT
 #include <linux/module.h>
 
 #include <linux/serial.h>
@@ -1221,7 +1221,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	tx->dma_in_flight = 0;
 
 	tx->xfer.complete_func = msm_hs_dmov_tx_callback;
-	tx->xfer.execute_func = NULL;
+	tx->xfer.exec_func = NULL;
 
 	tx->command_ptr->cmd = CMD_LC |
 	    CMD_DST_CRCI(msm_uport->dma_tx_crci) | CMD_MODE_BOX;
@@ -1237,7 +1237,7 @@ static int msm_hs_startup(struct uart_port *uport)
 
 	/* Turn on Uart Receive */
 	rx->xfer.complete_func = msm_hs_dmov_rx_callback;
-	rx->xfer.execute_func = NULL;
+	rx->xfer.exec_func = NULL;
 
 	rx->command_ptr->cmd = CMD_LC |
 	    CMD_SRC_CRCI(msm_uport->dma_rx_crci) | CMD_MODE_BOX;
@@ -1372,10 +1372,10 @@ static int msm_hs_probe(struct platform_device *pdev)
 	if (unlikely(set_irq_wake(uport->irq, 1)))
 		return -ENXIO;
 
-	if (pdata == NULL || pdata->rx_wakeup_irq < 0)
+	if (pdata == NULL || pdata->wakeup_irq < 0)
 		msm_uport->rx_wakeup.irq = -1;
 	else {
-		msm_uport->rx_wakeup.irq = pdata->rx_wakeup_irq;
+		msm_uport->rx_wakeup.irq = pdata->wakeup_irq;
 		msm_uport->rx_wakeup.ignore = 1;
 		msm_uport->rx_wakeup.inject_rx = pdata->inject_rx_on_wakeup;
 		msm_uport->rx_wakeup.rx_to_inject = pdata->rx_to_inject;

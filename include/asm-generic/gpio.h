@@ -4,6 +4,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/errno.h>
+#include <linux/list.h>
 
 #ifdef CONFIG_GPIOLIB
 
@@ -87,6 +88,7 @@ struct device_node;
  * are referenced through calls like gpio_get_value(gpio), the offset
  * is calculated by subtracting @base from the gpio number.
  */
+
 struct gpio_chip {
 	const char		*label;
 	struct device		*dev;
@@ -129,6 +131,20 @@ struct gpio_chip {
 	int of_gpio_n_cells;
 	int (*of_xlate)(struct gpio_chip *gc, struct device_node *np,
 		        const void *gpio_spec, u32 *flags);
+#endif
+#ifdef _LIQUID_COMPAT_GPIO
+	struct list_head list;
+	struct gpio_state *state;
+
+	unsigned int start;
+	unsigned int end;
+
+	int (*configure)(struct gpio_chip *chip, unsigned int gpio, unsigned long flags);
+	int (*get_irq_num)(struct gpio_chip *chip, unsigned int gpio, unsigned int *irqp, unsigned long *irqnumflagsp);
+	int (*read)(struct gpio_chip *chip, unsigned int gpio);
+	int (*write)(struct gpio_chip *chip, unsigned int gpio, unsigned on);
+	int (*read_detect_status)(struct gpio_chip *chip, unsigned int gpio);
+	int (*clear_detect_status)(struct gpio_chip *chip, unsigned int gpio);
 #endif
 };
 

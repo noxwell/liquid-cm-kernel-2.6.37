@@ -21,12 +21,16 @@
  * Used to configure low power wakeup */
 struct msm_serial_hs_platform_data {
 	int wakeup_irq;  /* wakeup irq */
+	int rx_wakeup_irq;  /* wakeup irq */
 	/* bool: inject char into rx tty on wakeup */
 	unsigned char inject_rx_on_wakeup;
 	char rx_to_inject;
+	
+	void (*exit_lpm_cb)(struct uart_port *);
 };
-
+#ifndef _MSM_SERIAL_HS_C_COMPAT
 unsigned int msm_hs_tx_empty(struct uart_port *uport);
+#endif
 void msm_hs_request_clock_off(struct uart_port *uport);
 void msm_hs_request_clock_on(struct uart_port *uport);
 void msm_hs_set_mctrl(struct uart_port *uport,
