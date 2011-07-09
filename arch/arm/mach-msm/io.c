@@ -39,9 +39,9 @@
 /* msm_shared_ram_phys default value of 0x00100000 is the most common value
  * and should work as-is for any target without stacked memory.
  */
-unsigned int msm_shared_ram_phys = 0x00100000;
+//unsigned int msm_shared_ram_phys = 0x00100000;
 
-static void msm_map_io(struct map_desc *io_desc, int size)
+/*static void msm_map_io(struct map_desc *io_desc, int size)
 {
 	int i;
 
@@ -51,7 +51,7 @@ static void msm_map_io(struct map_desc *io_desc, int size)
 			io_desc[i].pfn = __phys_to_pfn(msm_shared_ram_phys);
 
 	iotable_init(io_desc, size);
-}
+}*/
 
 #if defined(CONFIG_ARCH_MSM7X01A) || defined(CONFIG_ARCH_MSM7X27) \
 	|| defined(CONFIG_ARCH_MSM7X25)
@@ -112,6 +112,7 @@ static struct map_desc qsd8x50_io_desc[] __initdata = {
 #endif
 	{
 		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
+		.pfn = __phys_to_pfn(MSM_SHARED_RAM_PHYS),
 		.length =   MSM_SHARED_RAM_SIZE,
 		.type =     MT_DEVICE,
 	},
@@ -119,7 +120,7 @@ static struct map_desc qsd8x50_io_desc[] __initdata = {
 
 void __init msm_map_qsd8x50_io(void)
 {
-	msm_map_io(qsd8x50_io_desc, ARRAY_SIZE(qsd8x50_io_desc));
+	iotable_init(qsd8x50_io_desc, ARRAY_SIZE(qsd8x50_io_desc));
 }
 #endif /* CONFIG_ARCH_QSD8X50 */
 

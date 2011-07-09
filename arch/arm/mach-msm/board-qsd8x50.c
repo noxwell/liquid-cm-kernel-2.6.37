@@ -133,8 +133,6 @@
 #define MSM_SMI_BASE		0x00000000
 #endif
 
-#define MSM_SHARED_RAM_PHYS	(MSM_SMI_BASE + 0x00100000)
-
 #define MODEM_SIZE		0x02300000
 #define MSM_PMEM_SMI_BASE	(MSM_SMI_BASE + MODEM_SIZE)
 #define MSM_PMEM_SMI_SIZE	0x01D00000
@@ -3426,7 +3424,7 @@ static void __init qsd8x50_allocate_memory_regions(void)
 
 static void __init qsd8x50_map_io(void)
 {
-	msm_shared_ram_phys = MSM_SHARED_RAM_PHYS;
+	//msm_shared_ram_phys = MSM_SHARED_RAM_PHYS;
 	msm_map_qsd8x50_io();
 	qsd8x50_allocate_memory_regions();
 	msm_clock_init(msm_clocks_8x50, msm_num_clocks_8x50);
